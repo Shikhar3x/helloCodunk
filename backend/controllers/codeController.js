@@ -36,6 +36,7 @@ STRICT RULES:
 - Do NOT include markdown
 - Do NOT wrap output in backticks
 - Output ONLY runnable code
+- Use consistent indentation
 
 TASKS:
 1. Detect programming language
