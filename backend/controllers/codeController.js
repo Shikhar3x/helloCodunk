@@ -5,14 +5,10 @@ import { GoogleGenAI } from "@google/genai";
 export const formatCode = async (req, res) => {
   try {
     const { files } = req.body;
-
-    if (!files || !Array.isArray(files)) {
-      return res.status(400).json({
-        error: "Files array is required",
-      });
+    if (!Array.isArray(files)) {
+      return res.status(400).json({ error: "Files required" });
     }
 
-    // ✅ create Gemini client AFTER dotenv loads
     const ai = new GoogleGenAI({
       apiKey: process.env.GEMINI_API_KEY,
     });
@@ -21,38 +17,15 @@ export const formatCode = async (req, res) => {
 
     for (const file of files) {
       const prompt = `
-You are a senior software engineer and expert code reviewer.
-
-Your task is to CLEAN and FIX the code.
-
-STRICT RULES:
-- Fix syntax errors if present
-- Remove duplicated code
-- Improve structure and readability
-- Apply official best practices of the language
-- Keep the original behavior unless clearly broken
-- Do NOT invent new features
-- Do NOT add explanations
-- Do NOT include markdown
-- Do NOT wrap output in backticks
-- Output ONLY runnable code
-- Use consistent indentation
-
-TASKS:
-1. Detect programming language
-2. Rewrite the code into clean, professional, error-free form
-
-RETURN ONLY VALID JSON:
+Fix and clean this code.
+Return ONLY JSON.
 
 {
   "language": "string",
-  "formattedCode": "clean corrected code here"
+  "formattedCode": "code"
 }
 
-Filename:
-${file.filename}
-
-Original Code:
+Code:
 ${file.code}
 `;
 
@@ -61,15 +34,8 @@ ${file.code}
         contents: prompt,
       });
 
-      const rawText = response.text;
-
-      // remove accidental formatting
-      const cleanedText = rawText
-        .replace(/```json/gi, "")
-        .replace(/```/g, "")
-        .trim();
-
-      const parsed = JSON.parse(cleanedText);
+      const text = response.text.replace(/```/g, "");
+      const parsed = JSON.parse(text);
 
       cleanedFiles.push({
         filename: file.filename,
@@ -80,34 +46,17 @@ ${file.code}
     }
 
     const slug = nanoid(8);
+    await Code.create({ slug, files: cleanedFiles });
 
-    const saved = await Code.create({
-      slug,
-      files: cleanedFiles,
-    });
-
-    res.json({
-      slug: saved.slug,
-    });
-  } catch (error) {
-    console.error("AI cleaning error:", error);
-
-    res.status(500).json({
-      error: "AI code cleaning failed",
-    });
+    res.json({ slug });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Formatting failed" });
   }
 };
 
 export const getCode = async (req, res) => {
-  const project = await Code.findOne({
-    slug: req.params.slug,
-  });
-
-  if (!project) {
-    return res.status(404).json({
-      error: "Project not found",
-    });
-  }
-
+  const project = await Code.findOne({ slug: req.params.slug });
+  if (!project) return res.status(404).json({ error: "Not found" });
   res.json(project);
 };

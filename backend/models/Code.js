@@ -4,17 +4,13 @@ const fileSchema = new mongoose.Schema({
   filename: String,
   language: String,
   code: String,
-  formattedCode: String
+  formattedCode: String,
 });
 
 const codeSchema = new mongoose.Schema(
   {
-    slug: {
-      type: String,
-      unique: true
-    },
-
-    files: [fileSchema]
+    slug: { type: String, unique: true },
+    files: [fileSchema],
   },
   { timestamps: true }
 );
